@@ -18,11 +18,14 @@ lentilland-configs:
     #!/usr/bin/bash
     set -euo pipefail
     REPO="git@github.com:valenteEngineering/lentilLandConfigs.git"
+    BRANCH="handheld"
     DEST="${HOME}/.local/share/lentilLandConfigs"
     if [ -d "${DEST}/.git" ]; then
-        git -C "${DEST}" pull --ff-only
+        git -C "${DEST}" fetch origin "${BRANCH}"
+        git -C "${DEST}" checkout "${BRANCH}"
+        git -C "${DEST}" pull --ff-only origin "${BRANCH}"
     else
-        git clone "${REPO}" "${DEST}"
+        git clone -b "${BRANCH}" "${REPO}" "${DEST}"
     fi
     mkdir -p "${HOME}/.config"
     ln -sfn "${DEST}/hypr"   "${HOME}/.config/hypr"

@@ -5,15 +5,11 @@
 set -euxo pipefail
 
 ### 1. Packages -------------------------------------------------------------------------
-# Hyprland + the tools the lentilLand configs expect. These all live in the Fedora repos
-# on F43 (avoids the COPR Qt-version conflicts). foot/mako/waybar/hyprpaper/pavucontrol/
-# brightnessctl/ddcutil/jq/bc already ship on the base image; listed for completeness.
+# Required — all confirmed present in the F43 repos on the stock base image.
 dnf5 install -y \
     hyprland \
     hyprlock \
     hypridle \
-    hyprpaper \
-    hyprland-qtutils \
     xdg-desktop-portal-hyprland \
     waybar \
     wofi \
@@ -26,8 +22,17 @@ dnf5 install -y \
     ddcutil \
     jq \
     bc \
-    unzip \
-    polkit-gnome
+    unzip
+
+# Best-effort — wallpaper + polkit agent. Names vary across Fedora releases, so skip any
+# that aren't available rather than failing the whole build. The configs probe for whichever
+# of these actually landed (hyprpaper-or-swaybg, and the first polkit agent found).
+dnf5 install -y --skip-unavailable \
+    hyprpaper \
+    swaybg \
+    mate-polkit \
+    polkit-gnome \
+    hyprpolkitagent
 
 ### 2. JetBrainsMono Nerd Font (waybar glyphs) ------------------------------------------
 NERD_VER="v3.4.0"

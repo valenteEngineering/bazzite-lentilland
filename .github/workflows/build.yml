@@ -1,0 +1,63 @@
+name: build-bazzite-lentilland
+
+on:
+  schedule:
+    - cron: "30 6 * * *"   # daily — re-merge your layer onto the latest Bazzite
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+  workflow_dispatch:        # manual "Run workflow" button
+
+env:
+  IMAGE_NAME: bazzite-lentilland
+  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
+      - name: Image metadata
+        id: meta
+        run: |
+          echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "registry_lc=$(echo '${{ env.IMAGE_REGISTRY }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        id: build
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: latest ${{ steps.meta.outputs.date }}
+          containerfiles: ./Containerfile
+          oci: true
+
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ steps.meta.outputs.registry_lc }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to GHCR
+        if: github.event_name != 'pull_request'
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
+          registry: ${{ steps.meta.outputs.registry_lc }}

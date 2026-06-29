@@ -4,12 +4,18 @@
 # =======================================================================================
 set -euxo pipefail
 
-### 1. Packages -------------------------------------------------------------------------
-# Required — all confirmed present in the F43 repos on the stock base image.
+### 0. Enable the Hyprland COPR --------------------------------------------------------
+# Hyprland & friends are NOT in Fedora's official repos — they live in this COPR.
+dnf5 install -y dnf5-plugins
+dnf5 -y copr enable solopasha/hyprland
+
+### 1. Required packages ---------------------------------------------------------------
+# hypr* come from the COPR; the rest are in the Fedora repos on the base image.
 dnf5 install -y \
     hyprland \
     hyprlock \
     hypridle \
+    hyprpaper \
     xdg-desktop-portal-hyprland \
     waybar \
     wofi \
@@ -18,18 +24,17 @@ dnf5 install -y \
     dolphin \
     mako \
     pavucontrol \
+    swaybg \
     brightnessctl \
     ddcutil \
     jq \
     bc \
     unzip
 
-# Best-effort — wallpaper + polkit agent. Names vary across Fedora releases, so skip any
-# that aren't available rather than failing the whole build. The configs probe for whichever
-# of these actually landed (hyprpaper-or-swaybg, and the first polkit agent found).
+# Best-effort — qtutils (Qt-version sensitive on Bazzite) + a polkit agent. Skip any that
+# aren't available rather than failing the build; the config probes for whichever landed.
 dnf5 install -y --skip-unavailable \
-    hyprpaper \
-    swaybg \
+    hyprland-qtutils \
     mate-polkit \
     polkit-gnome \
     hyprpolkitagent

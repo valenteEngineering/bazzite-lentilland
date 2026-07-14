@@ -44,29 +44,14 @@ dnf5 install -y --skip-unavailable \
     hyprpolkitagent
 
 ### 1c. hyprgrass — touchscreen gesture plugin (Legion Go 2 touch workspace switching) --
-# Built HERE, in the image, against the COPR's hyprland-devel headers, so the plugin ABI
-# matches the exact Hyprland the image ships (Hyprland refuses plugins built against a
-# different commit). Gives 3-finger swipe-from-anywhere -> workspace switch (no screen
-# gaps required, unlike the built-in edge swipe). See ~/.config/hypr/hyprland.conf.
-#
-# VERSION COUPLING: HYPRGRASS_TAG must match the Hyprland version from the COPR above.
-# If mbaldessari rolls forward to 0.55.x, this build will fail loudly — bump the tag to the
-# matching hl-0.55.x AND expect a hyprlang->lua config migration.
-HYPRGRASS_TAG="hl-0.54.3"
-# hyprland-devel transitively pulls the hypr*-devel headers (hyprutils/hyprlang/aquamarine/…)
-# via its pkgconfig Requires, so we only list it + the extra bits hyprgrass needs. The
-# 'pkgconfig(xwayland)' capability satisfies hyprland-devel's XWayland header dependency
-# (provided by xorg-x11-server-Xwayland-devel) — without it the transaction fails to resolve.
-dnf5 install -y \
-    hyprland-devel 'pkgconfig(xwayland)' \
-    glm-devel meson ninja-build gcc-c++ git pkgconf-pkg-config \
-    pixman-devel wayland-devel libdrm-devel
-git clone --depth 1 -b "${HYPRGRASS_TAG}" https://github.com/horriblename/hyprgrass /tmp/hyprgrass
-meson setup /tmp/hyprgrass/build /tmp/hyprgrass
-ninja -C /tmp/hyprgrass/build
-install -Dm0755 /tmp/hyprgrass/build/src/libhyprgrass.so \
-    /usr/lib/hyprland/plugins/libhyprgrass.so
-rm -rf /tmp/hyprgrass
+# The plugin's libhyprgrass.so is NOT built here: it is compiled in the `hyprgrass-builder`
+# stage of the Containerfile (plain Fedora, where Fedora's Xwayland-devel is installable —
+# Bazzite excludes Fedora's Xwayland and ships no -devel, so hyprland-devel can't resolve
+# `pkgconfig(xwayland)` inside this Bazzite image) and COPY'd into /usr/lib/hyprland/plugins/.
+# The builder stage pulls the SAME mbaldessari Hyprland 0.54.3, so the plugin ABI matches.
+# Gives 3-finger swipe-from-anywhere -> workspace switch. See ~/.config/hypr/hyprland.conf.
+# VERSION COUPLING lives on the ARG HYPRGRASS_TAG in the Containerfile — keep it matched to
+# the COPR's Hyprland version.
 
 ### 1b. Google Chrome ------------------------------------------------------------------
 # Add Google's official RPM repo and install the stable channel, so Chrome is baked into

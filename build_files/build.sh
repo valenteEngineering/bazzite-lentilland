@@ -64,6 +64,10 @@ enabled=1
 gpgcheck=1
 gpgkey=https://dl.google.com/linux/linux_signing_key.pub
 EOF
+# The bazzite base now already populates /opt/google, which makes chrome's RPM cpio unpack
+# fail with "mkdir failed - File exists". Clear it first so the install lands cleanly.
+# (/opt is a symlink to /var/opt on this ostree base; -rf follows it fine.)
+rm -rf /opt/google
 dnf5 install -y google-chrome-stable
 
 ### 2. JetBrainsMono Nerd Font (waybar glyphs) ------------------------------------------

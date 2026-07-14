@@ -53,10 +53,14 @@ dnf5 install -y --skip-unavailable \
 # If mbaldessari rolls forward to 0.55.x, this build will fail loudly — bump the tag to the
 # matching hl-0.55.x AND expect a hyprlang->lua config migration.
 HYPRGRASS_TAG="hl-0.54.3"
-dnf5 install -y --skip-unavailable \
-    hyprland-devel glm-devel meson ninja-build gcc-c++ git pkgconf-pkg-config \
-    hyprutils-devel hyprlang-devel hyprgraphics-devel hyprcursor-devel \
-    aquamarine-devel hyprland-protocols-devel pixman-devel wayland-devel libdrm-devel
+# hyprland-devel transitively pulls the hypr*-devel headers (hyprutils/hyprlang/aquamarine/…)
+# via its pkgconfig Requires, so we only list it + the extra bits hyprgrass needs. The
+# 'pkgconfig(xwayland)' capability satisfies hyprland-devel's XWayland header dependency
+# (provided by xorg-x11-server-Xwayland-devel) — without it the transaction fails to resolve.
+dnf5 install -y \
+    hyprland-devel 'pkgconfig(xwayland)' \
+    glm-devel meson ninja-build gcc-c++ git pkgconf-pkg-config \
+    pixman-devel wayland-devel libdrm-devel
 git clone --depth 1 -b "${HYPRGRASS_TAG}" https://github.com/horriblename/hyprgrass /tmp/hyprgrass
 meson setup /tmp/hyprgrass/build /tmp/hyprgrass
 ninja -C /tmp/hyprgrass/build

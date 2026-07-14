@@ -53,22 +53,40 @@ dnf5 install -y --skip-unavailable \
 # VERSION COUPLING lives on the ARG HYPRGRASS_TAG in the Containerfile — keep it matched to
 # the COPR's Hyprland version.
 
-### 1b. Google Chrome ------------------------------------------------------------------
-# Add Google's official RPM repo and install the stable channel, so Chrome is baked into
-# the image and tracks upstream updates on every rebuild (no loose RPM to re-layer).
-cat > /etc/yum.repos.d/google-chrome.repo <<'EOF'
-[google-chrome]
-name=google-chrome
-baseurl=https://dl.google.com/linux/chrome/rpm/stable/x86_64
-enabled=1
-gpgcheck=1
-gpgkey=https://dl.google.com/linux/linux_signing_key.pub
+### 1b. Google Chrome (Flatpak) -------------------------------------------------------
+# RPM Chrome installs into /opt, which is a symlink to /var/opt on this bootc base — RPM's
+# cpio refuses to unpack through the symlinked /opt ("mkdir failed - File exists"). So we
+# ship Chrome as a Flatpak instead: can't `flatpak install` during the image build (no
+# daemon in buildah), so we register a first-boot oneshot that installs it from Flathub
+# (already configured + enabled on the Bazzite base by bazzite-flatpak-manager).
+install -Dm0755 /dev/stdin /usr/libexec/lentilland-flatpak-install <<'EOF'
+#!/usr/bin/bash
+set -euo pipefail
+STAMP=/etc/lentilland/flatpaks-installed
+[ -f "$STAMP" ] && exit 0
+flatpak remote-add --if-not-exists --system flathub \
+    https://flathub.org/repo/flathub.flatpakrepo || true
+flatpak install -y --system --noninteractive flathub com.google.Chrome
+mkdir -p "$(dirname "$STAMP")" && touch "$STAMP"
 EOF
-# The bazzite base now already populates /opt/google, which makes chrome's RPM cpio unpack
-# fail with "mkdir failed - File exists". Clear it first so the install lands cleanly.
-# (/opt is a symlink to /var/opt on this ostree base; -rf follows it fine.)
-rm -rf /opt/google
-dnf5 install -y google-chrome-stable
+install -Dm0644 /dev/stdin /usr/lib/systemd/system/lentilland-flatpak-install.service <<'EOF'
+[Unit]
+Description=Install lentilland default Flatpaks (Google Chrome)
+Wants=network-online.target
+After=network-online.target bazzite-flatpak-manager.service
+ConditionPathExists=!/etc/lentilland/flatpaks-installed
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/lentilland-flatpak-install
+Restart=on-failure
+RestartSec=30
+StartLimitInterval=0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable lentilland-flatpak-install.service
 
 ### 2. JetBrainsMono Nerd Font (waybar glyphs) ------------------------------------------
 NERD_VER="v3.4.0"

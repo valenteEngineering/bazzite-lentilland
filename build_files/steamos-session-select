@@ -42,6 +42,12 @@ if [[ -z ${SENTINEL_CREATED:-} ]]; then
     cat "$SENTINEL_FILE"
   )
   export SENTINEL_CREATED=1
+
+  # Scrub compositor env leaked into the systemd user manager by the outgoing session.
+  # Without this, switching from Hyprland leaves WAYLAND_DISPLAY=wayland-1 behind, so the
+  # gamescope user service thinks it's nested, chases a dead socket, and black-screen loops.
+  # Removing these lets the next session (esp. gamescope) come up cleanly on DRM.
+  systemctl --user unset-environment DISPLAY WAYLAND_DISPLAY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP 2>/dev/null || true
 fi
 
 session_launcher=""
